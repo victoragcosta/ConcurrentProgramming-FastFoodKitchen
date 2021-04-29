@@ -1,0 +1,9 @@
+# Latex auxiliary outputs
+
+*-blx.bib
+*.aux
+*.bbl
+*.blg
+*.log
+*.run.xml
+*.synctex.gz

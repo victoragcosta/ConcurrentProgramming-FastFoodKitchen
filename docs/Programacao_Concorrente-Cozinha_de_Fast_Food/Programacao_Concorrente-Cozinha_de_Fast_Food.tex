@@ -1,0 +1,62 @@
+\documentclass[a4paper]{article}
+\usepackage[brazil]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[textheight=25cm, textwidth=15cm]{geometry}
+
+\renewcommand{\lstlistingname}{Algoritmo}
+\lstset{
+	language=C++,
+	basicstyle=\ttfamily,
+	numbers=left,
+	numberstyle=\small,
+	frame=tb,
+	tabsize=2,
+	columns=fixed,
+	showstringspaces=false,
+	showtabs=false,
+	keepspaces,
+	commentstyle=\color{red},
+	keywordstyle=\color{blue}
+}
+
+
+\bibliography{references.bib}
+
+%opening
+\title{Programação concorrente - Cozinha de Fast Food}
+\author{Victor Costa}
+
+\begin{document}
+
+\maketitle
+
+\section{Introdução}
+
+Introduza aqui\cite{Teste} e aqui \ref{codigo} 
+\begin{lstlisting}[caption=Código\label{codigo}]
+#include <iostream>
+
+int main(){
+	std::cout << "Hello World" << std::endl;
+}
+\end{lstlisting}
+
+
+\section{Formalização do problema}
+
+Formalize aqui
+
+\section{Descrição do algoritmo da solução do problema}
+
+Descreva aqui
+
+\section{Conclusão}
+
+Conclua aqui
+
+\printbibliography
+
+\end{document}
