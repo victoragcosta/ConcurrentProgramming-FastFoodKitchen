@@ -18,7 +18,7 @@ DEF_EXT=hpp
 # Extension of the source files
 SRC_EXT=cpp
 # Compilation flags
-CFLAGS=-Wall -g -I $(IDIR)
+CFLAGS=-Wall -g -pthread -I $(IDIR)
 # Libs flags
 LIBS=-lm
 
