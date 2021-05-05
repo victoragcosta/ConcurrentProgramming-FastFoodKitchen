@@ -130,6 +130,7 @@ bool Fries::Salting::saltFries()
     If successful the unsalted fries are already subtracted in this function call.
   */
   if(workers < maxWorkers && DeepFriers::getUnsaltedFries(friesPerPortion)){
+    workers++;
     portions++;
     canDo = true;
   }
@@ -140,6 +141,9 @@ bool Fries::Salting::saltFries()
 
   sleep(saltingTime);
 
+  pthread_mutex_lock(&mutex);
+  workers--;
+  pthread_mutex_unlock(&mutex);
   return true;
 }
 

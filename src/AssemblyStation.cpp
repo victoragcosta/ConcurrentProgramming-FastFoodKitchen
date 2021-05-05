@@ -1,31 +1,32 @@
+#include "AssemblyStation.hpp"
 #include "Griddle.hpp"
 
 #include <pthread.h>
 #include <unistd.h>
 
-namespace Griddle
+namespace AssemblyStation
 {
   /* Constants */
-  const int griddlingTime = 7;
-  const int burgersPerBatch = 20;
+  const int assemblingTime = 3;
+  const int burgersPerBatch = 1;
   int maxWorkers;
 
-  /* Griddling control */
+  /* Assembling control */
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-  int burgersMeat = 0;
+  int burgers = 0;
   int workers = 0;
 }
 
-void Griddle::initGriddle(int nGriddles)
+void AssemblyStation::initAssemblyStations(int nAssemblyStations)
 {
-  maxWorkers = nGriddles;
+  maxWorkers = nAssemblyStations;
 }
 
-bool Griddle::makeBurgerMeats()
+bool AssemblyStation::makeBurgers()
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if(workers < maxWorkers) {
+  if(workers < maxWorkers && Griddle::getBurgerMeats(burgersPerBatch)) {
     workers++;
     canDo = true;
   }
@@ -34,22 +35,21 @@ bool Griddle::makeBurgerMeats()
   if(!canDo)
     return false;
 
-  sleep(griddlingTime);
-
+  sleep(assemblingTime);
   pthread_mutex_lock(&mutex);
   workers--;
-  burgersMeat += burgersPerBatch;
+  burgers += burgersPerBatch;
   pthread_mutex_unlock(&mutex);
 
   return true;
 }
 
-bool Griddle::getBurgerMeats(int n)
+bool AssemblyStation::getBurgers(int n)
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if(burgersMeat >= n) {
-    burgersMeat -= n;
+  if(burgers >= n) {
+    burgers -= n;
     canDo = true;
   }
   pthread_mutex_unlock(&mutex);
