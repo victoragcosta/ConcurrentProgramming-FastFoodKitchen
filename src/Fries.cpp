@@ -8,7 +8,7 @@ namespace Fries
   namespace DeepFriers
   {
     /* Constants */
-    int setupTime, fryTime, friesPerBatch;
+    const int setupTime = 2, fryTime = 5, friesPerBatch = 120;
 
     /* Deep friers cycle control */
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -24,7 +24,8 @@ namespace Fries
   namespace Salting
   {
     /* Constants */
-    int saltingTime, maxWorkers, friesPerPortion;
+    const int saltingTime = 3, friesPerPortion = 40;
+    int maxWorkers;
 
     /* Salting control */
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -36,13 +37,7 @@ namespace Fries
 std::vector<pthread_t> Fries::initFries(int nDeepFriers, int nSalters)
 {
   /* Setup constants */
-  DeepFriers::setupTime = 2;
-  DeepFriers::fryTime = 5;
-  DeepFriers::friesPerBatch = 120;
-  Salting::saltingTime = 3;
-  Salting::friesPerPortion = 40;
-
-  Salting::maxWorkers = 2;
+  Salting::maxWorkers = nSalters;
 
   /* Start Threads */
   pthread_t thread;

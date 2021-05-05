@@ -6,12 +6,15 @@
 // #include <semaphore.h> // May be needed
 
 #include "Fries.hpp"
+#include "Griddle.hpp"
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
   vector<pthread_t> threads, aux;
+
+  Griddle::initGriddle(2);
 
   aux = Fries::initFries(2, 2);
   threads.insert(threads.end(), aux.begin(), aux.end());
