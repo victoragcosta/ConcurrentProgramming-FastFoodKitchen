@@ -1,32 +1,22 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <vector>
 #include <pthread.h> // Adds locks, conds and threads
 // #include <semaphore.h> // May be needed
 
-using namespace std;
+#include "Fries.hpp"
 
-void *Thread(void *arg) {
-  int id = *(int *)arg;
-  cout << "Meu id é " + to_string(id) + "\n";
-  return arg;
-}
+using namespace std;
 
 int main(int argc, char *argv[])
 {
-  const int size = 10;
+  vector<pthread_t> threads, aux;
 
-  pthread_t threads[size];
+  aux = Fries::initFries(2, 2);
+  threads.insert(threads.end(), aux.begin(), aux.end());
 
-  int *id;
-  for (int i = 0; i < size; i++)
-  {
-    id = (int *)malloc(sizeof(int));
-    *id = i;
-    pthread_create(&threads[i], NULL, Thread, (void *)id);
-  }
-
-  for (int i = 0; i < size; i++)
+  for (size_t i = 0; i < threads.size(); i++)
   {
     if (pthread_join(threads[i], NULL))
     {
@@ -34,6 +24,6 @@ int main(int argc, char *argv[])
       exit(1);
     }
   }
-  printf("Bye!\n");
+  printf("Finalizando programa.\n");
   return 0;
 }
