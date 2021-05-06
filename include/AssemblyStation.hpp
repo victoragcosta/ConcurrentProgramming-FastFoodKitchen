@@ -1,6 +1,7 @@
 #ifndef ASSEMBLY_STATION_HPP_
 #define ASSEMBLY_STATION_HPP_
 
+#include <pthread.h>
 namespace AssemblyStation
 {
   extern pthread_mutex_t mutex;
