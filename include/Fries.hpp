@@ -21,6 +21,9 @@ namespace Fries
   {
     bool saltFries();
 
+    extern pthread_mutex_t mutex;
+    extern int portions;
+
     bool getPortions(int n);
   }
 }

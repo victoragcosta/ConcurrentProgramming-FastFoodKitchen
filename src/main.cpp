@@ -8,6 +8,7 @@
 #include "Fries.hpp"
 #include "Griddle.hpp"
 #include "AssemblyStation.hpp"
+#include "Delivery.hpp"
 
 using namespace std;
 
@@ -15,6 +16,7 @@ int main(int argc, char *argv[])
 {
   vector<pthread_t> threads, aux;
 
+  Delivery::initDelivery(2);
   AssemblyStation::initAssemblyStations(2);
   Griddle::initGriddle(2);
 
