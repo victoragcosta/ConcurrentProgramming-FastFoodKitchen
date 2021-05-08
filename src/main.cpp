@@ -16,10 +16,11 @@ int main(int argc, char *argv[])
 {
   vector<pthread_t> threads, aux;
 
-  Delivery::initDelivery(2);
   AssemblyStation::initAssemblyStations(2);
   Griddle::initGriddle(2);
 
+  aux = Delivery::initDelivery(2, 2);
+  threads.insert(threads.end(), aux.begin(), aux.end());
   aux = Fries::initFries(2, 2);
   threads.insert(threads.end(), aux.begin(), aux.end());
 
