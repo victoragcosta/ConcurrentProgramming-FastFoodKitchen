@@ -1,5 +1,6 @@
 #include "AssemblyStation.hpp"
 #include "Griddle.hpp"
+#include "Worker.hpp"
 
 #include <pthread.h>
 #include <unistd.h>
@@ -26,21 +27,23 @@ bool AssemblyStation::makeBurgers()
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if(workers < maxWorkers && Griddle::getBurgerMeats(burgersPerBatch)) {
+  if (workers < maxWorkers && Griddle::getBurgerMeats(burgersPerBatch))
+  {
     workers++;
     canDo = true;
   }
   pthread_mutex_unlock(&mutex);
 
-  if(!canDo)
+  if (!canDo)
     return false;
 
   sleep(assemblingTime);
   pthread_mutex_lock(&mutex);
-  workers--;
+  --workers;
   burgers += burgersPerBatch;
   pthread_mutex_unlock(&mutex);
 
+  Worker::broadcastAvailableTasks();
   return true;
 }
 
@@ -48,13 +51,14 @@ bool AssemblyStation::getBurgers(int n)
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if(burgers >= n) {
+  if (burgers >= n)
+  {
     burgers -= n;
     canDo = true;
   }
   pthread_mutex_unlock(&mutex);
 
-  if(!canDo)
+  if (!canDo)
     return false;
 
   return true;

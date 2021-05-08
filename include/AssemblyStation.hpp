@@ -4,6 +4,9 @@
 #include <pthread.h>
 namespace AssemblyStation
 {
+  extern const int assemblingTime;
+  extern const int burgersPerBatch;
+
   extern pthread_mutex_t mutex;
   extern int burgers;
 

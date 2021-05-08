@@ -9,6 +9,7 @@
 #include "Griddle.hpp"
 #include "AssemblyStation.hpp"
 #include "Delivery.hpp"
+#include "Worker.hpp"
 
 using namespace std;
 
@@ -19,9 +20,13 @@ int main(int argc, char *argv[])
   AssemblyStation::initAssemblyStations(2);
   Griddle::initGriddle(2);
 
-  aux = Delivery::initDelivery(2, 2);
-  threads.insert(threads.end(), aux.begin(), aux.end());
   aux = Fries::initFries(2, 2);
+  threads.insert(threads.end(), aux.begin(), aux.end());
+
+  aux = Worker::initWorkers(6);
+  threads.insert(threads.end(), aux.begin(), aux.end());
+
+  aux = Delivery::initDelivery(2, 2);
   threads.insert(threads.end(), aux.begin(), aux.end());
 
   for (size_t i = 0; i < threads.size(); i++)

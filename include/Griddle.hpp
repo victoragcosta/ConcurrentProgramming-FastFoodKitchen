@@ -3,12 +3,14 @@
 
 namespace Griddle
 {
+  extern const int griddlingTime;
+  extern const int burgersPerBatch;
+
   void initGriddle(int nGriddles);
 
   bool makeBurgerMeats();
 
   bool getBurgerMeats(int n);
 }
-
 
 #endif /* GRIDDLE_HPP_ */

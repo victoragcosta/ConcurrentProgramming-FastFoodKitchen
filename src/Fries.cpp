@@ -1,4 +1,6 @@
 #include "Fries.hpp"
+#include "Worker.hpp"
+
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
@@ -13,8 +15,8 @@ namespace Fries
     /* Deep friers cycle control */
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
-    int available = 0;  //!< Helps workers know if there are free deep friers
-    int requested = 0;  //!< Helps signal deep friers to work
+    int available = 0; //!< Helps workers know if there are free deep friers
+    int requested = 0; //!< Helps signal deep friers to work
 
     /* Unsalted fries control */
     pthread_mutex_t mutexUnsaltedFries = PTHREAD_MUTEX_INITIALIZER;
@@ -55,11 +57,10 @@ std::vector<pthread_t> Fries::initFries(int nDeepFriers, int nSalters)
   return threads;
 }
 
-
-void* Fries::DeepFriers::DeepFrier(void* args)
+void *Fries::DeepFriers::DeepFrier(void *args)
 {
-  int id = *(int*)args;
-  delete (int*)args; // Prevent memory leaks
+  int id = *(int *)args;
+  delete (int *)args; // Prevent memory leaks
 
   std::stringstream out;
   out << "Deep frier of id " << id << " instantiated" << std::endl;
@@ -70,7 +71,13 @@ void* Fries::DeepFriers::DeepFrier(void* args)
   {
     pthread_mutex_lock(&mutex);
     /* Show that the deep frier is free */
-    available++;
+    if (++available == 1)
+      Worker::broadcastAvailableTasks();
+
+    out << "DeepFrier[" << id << "]: Estou pronto." << std::endl;
+    std::cout << out.str();
+    out.str("");
+
     /* Wait for a request */
     while (requested <= 0)
       pthread_cond_wait(&condition, &mutex);
@@ -83,7 +90,12 @@ void* Fries::DeepFriers::DeepFrier(void* args)
     /* Add unsalted fries */
     pthread_mutex_lock(&mutex);
     unsaltedFries += friesPerBatch;
-    pthread_mutex_lock(&mutex);
+    out << "DeepFrier[" << id << "]: Fritei. Agora temos " << unsaltedFries << " batatas." << std::endl;
+    std::cout << out.str();
+    out.str("");
+    if (unsaltedFries >= Salting::friesPerPortion)
+      Worker::broadcastAvailableTasks();
+    pthread_mutex_unlock(&mutex);
   }
 }
 
@@ -91,19 +103,21 @@ bool Fries::DeepFriers::setupDeepFrier()
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if(available > 0) {
+  if (available > 0)
+  {
     canDo = true;
     available--;
   }
   pthread_mutex_unlock(&mutex);
 
-  if(!canDo)
+  if (!canDo)
     return false;
 
   sleep(setupTime);
   pthread_mutex_lock(&mutex);
   requested++;
   pthread_mutex_unlock(&mutex);
+  pthread_cond_signal(&condition);
 
   return true;
 }
@@ -112,14 +126,14 @@ bool Fries::DeepFriers::getUnsaltedFries(int n)
 {
   bool canDo = false;
   pthread_mutex_lock(&mutexUnsaltedFries);
-  if(unsaltedFries >= n){
+  if (unsaltedFries >= n)
+  {
     canDo = true;
     unsaltedFries -= n;
   }
   pthread_mutex_unlock(&mutexUnsaltedFries);
   return canDo;
 }
-
 
 bool Fries::Salting::saltFries()
 {
@@ -129,28 +143,33 @@ bool Fries::Salting::saltFries()
     Tries to make a portion.
     If successful the unsalted fries are already subtracted in this function call.
   */
-  if(workers < maxWorkers && DeepFriers::getUnsaltedFries(friesPerPortion)){
+  if (workers < maxWorkers && DeepFriers::getUnsaltedFries(friesPerPortion))
+  {
     workers++;
     portions++;
     canDo = true;
   }
   pthread_mutex_unlock(&mutex);
 
-  if(!canDo)
+  if (!canDo)
     return false;
 
   sleep(saltingTime);
 
   pthread_mutex_lock(&mutex);
-  workers--;
+  --workers;
   pthread_mutex_unlock(&mutex);
+
+  Worker::broadcastAvailableTasks();
   return true;
 }
 
-bool Fries::Salting::getPortions(int n) {
+bool Fries::Salting::getPortions(int n)
+{
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if(portions >= n){
+  if (portions >= n)
+  {
     canDo = true;
     portions -= n;
   }

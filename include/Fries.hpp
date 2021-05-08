@@ -10,7 +10,9 @@ namespace Fries
 
   namespace DeepFriers
   {
-    void* DeepFrier(void* args);
+    extern const int setupTime, fryTime, friesPerBatch;
+
+    void *DeepFrier(void *args);
 
     bool setupDeepFrier();
 
@@ -19,6 +21,8 @@ namespace Fries
 
   namespace Salting
   {
+    extern const int saltingTime, friesPerPortion;
+
     bool saltFries();
 
     extern pthread_mutex_t mutex;
