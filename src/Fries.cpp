@@ -114,13 +114,15 @@ bool Fries::DeepFriers::setupDeepFrier()
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if (available > 0)
+  pthread_mutex_lock(&mutexUnsaltedFries);
+  if (available > 0 && unsaltedFries + friesPerBatch <= 240)
   {
     canDo = true;
     available--;
     statusDisplayer->updateDeepFrierAvailable(available);
   }
   pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&mutexUnsaltedFries);
 
   if (!canDo)
     return false;
