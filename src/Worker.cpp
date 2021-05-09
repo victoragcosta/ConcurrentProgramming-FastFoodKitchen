@@ -9,6 +9,9 @@
 #include <sstream>
 #include <iostream>
 
+extern bool runThreads;
+extern std::ostringstream logString;
+
 namespace Worker
 {
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -42,15 +45,15 @@ void *Worker::Worker(void *args)
   std::vector<Delivery::priority_type_t> priorities;
   bool doneSomething;
 
-  std::stringstream out;
+  std::ostringstream out;
   int id = *(int *)args;
   delete (int *)args;
 
   out << "Worker of id " << id << " instantiated" << std::endl;
-  std::cout << out.str();
+  logString << out.str();
   out.str("");
 
-  while (true)
+  while (runThreads)
   {
     doneSomething = false;
     while (!doneSomething)
@@ -62,32 +65,32 @@ void *Worker::Worker(void *args)
         {
         case Delivery::DELIVERY:
           out << "Worker[" << id << "]: Tentando entregar pedido." << std::endl;
-          if (doneSomething = Delivery::deliverOrder())
+          if ((doneSomething = Delivery::deliverOrder()))
             out << "Worker[" << id << "]: Entreguei pedido." << std::endl;
           break;
 
         case Delivery::BURGERS:
           out << "Worker[" << id << "]: Tentando finalizar um hambúrguer." << std::endl;
-          if (doneSomething = AssemblyStation::makeBurgers())
+          if ((doneSomething = AssemblyStation::makeBurgers()))
             out << "Worker[" << id << "]: Finalizei um hambúrguer." << std::endl;
 
           if (!doneSomething)
           {
             out << "Worker[" << id << "]: Tentando fritar hambúrgueres." << std::endl;
-            if (doneSomething = Griddle::makeBurgerMeats())
+            if ((doneSomething = Griddle::makeBurgerMeats()))
               out << "Worker[" << id << "]: Fritei hambúrgueres." << std::endl;
           }
           break;
 
         case Delivery::FRIES:
           out << "Worker[" << id << "]: Tentando fazer uma porção de batatas." << std::endl;
-          if (doneSomething = Fries::Salting::saltFries())
+          if ((doneSomething = Fries::Salting::saltFries()))
             out << "Worker[" << id << "]: Fiz uma porção de batatas." << std::endl;
 
           if (!doneSomething)
           {
             out << "Worker[" << id << "]: Tentando colocar batatas para fritar." << std::endl;
-            if (doneSomething = Fries::DeepFriers::setupDeepFrier())
+            if ((doneSomething = Fries::DeepFriers::setupDeepFrier()))
               out << "Worker[" << id << "]: Coloquei batatas para fritar." << std::endl;
           }
           break;
@@ -95,7 +98,7 @@ void *Worker::Worker(void *args)
 
         if (doneSomething)
         {
-          std::cout << out.str();
+          logString << out.str();
           out.str("");
           break;
         }
@@ -104,11 +107,12 @@ void *Worker::Worker(void *args)
       if (!doneSomething)
       {
         out << "Worker[" << id << "]: Sem tarefas para fazer, vou esperar por uma." << std::endl;
-        std::cout << out.str();
+        logString << out.str();
         out.str("");
         pthread_cond_wait(&waitForTask, &mutex);
       }
       pthread_mutex_unlock(&mutex);
     }
   }
+  return nullptr;
 }

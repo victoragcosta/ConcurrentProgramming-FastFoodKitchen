@@ -6,6 +6,10 @@
 
 namespace Delivery
 {
+  extern const int assemblingTime;
+
+  extern pthread_cond_t waitForOrderDelivered;
+
   std::vector<pthread_t> initDelivery(int nDelivery, int nCustomers);
 
   typedef struct

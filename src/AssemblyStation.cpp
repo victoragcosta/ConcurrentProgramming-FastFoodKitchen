@@ -1,6 +1,7 @@
 #include "AssemblyStation.hpp"
 #include "Griddle.hpp"
 #include "Worker.hpp"
+#include "StatusDisplayer.hpp"
 
 #include <pthread.h>
 #include <unistd.h>
@@ -29,7 +30,7 @@ bool AssemblyStation::makeBurgers()
   pthread_mutex_lock(&mutex);
   if (workers < maxWorkers && Griddle::getBurgerMeats(burgersPerBatch))
   {
-    workers++;
+    statusDisplayer->updateAssemblyStationWorkers(++workers);
     canDo = true;
   }
   pthread_mutex_unlock(&mutex);
@@ -39,8 +40,9 @@ bool AssemblyStation::makeBurgers()
 
   sleep(assemblingTime);
   pthread_mutex_lock(&mutex);
-  --workers;
+  statusDisplayer->updateAssemblyStationWorkers(--workers);
   burgers += burgersPerBatch;
+  statusDisplayer->updateAssemblyStationBurgers(burgers);
   pthread_mutex_unlock(&mutex);
 
   Worker::broadcastAvailableTasks();
@@ -54,6 +56,7 @@ bool AssemblyStation::getBurgers(int n)
   if (burgers >= n)
   {
     burgers -= n;
+    statusDisplayer->updateAssemblyStationBurgers(burgers);
     canDo = true;
   }
   pthread_mutex_unlock(&mutex);

@@ -1,6 +1,8 @@
 #ifndef ASSEMBLY_STATION_HPP_
 #define ASSEMBLY_STATION_HPP_
 
+#include "StatusDisplayer.hpp"
+
 #include <pthread.h>
 namespace AssemblyStation
 {

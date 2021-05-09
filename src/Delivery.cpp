@@ -3,6 +3,7 @@
 #include "AssemblyStation.hpp"
 #include "Fries.hpp"
 #include "Worker.hpp"
+#include "StatusDisplayer.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -12,6 +13,8 @@
 #include <unistd.h>
 #include <pthread.h>
 
+extern bool runThreads;
+extern std::ostringstream logString;
 namespace Delivery
 {
   /* Constants */
@@ -21,7 +24,8 @@ namespace Delivery
 
   /* Delivery and order control */
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-  pthread_mutex_t customerWaitLock = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_t orderMakingMutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t waitForOrderDelivered = PTHREAD_COND_INITIALIZER;
   int workers = 0;
 
   /* Orders queue */
@@ -44,10 +48,6 @@ std::vector<pthread_t> Delivery::initDelivery(int nDelivery, int nCustomers)
   maxWorkers = nDelivery;
 
   srand(time(NULL));
-
-  // This makes so that any other lock waits for the unlock before going.
-  // This also only allows only one to be woken up, which is the desired behavior.
-  pthread_mutex_lock(&customerWaitLock);
 
   pthread_t thread;
   int *id;
@@ -72,17 +72,26 @@ bool Delivery::deliverOrder()
   pthread_mutex_lock(&mutex);
   pthread_mutex_lock(&Fries::Salting::mutex);
   pthread_mutex_lock(&AssemblyStation::mutex);
-  front = ordersQueue.front();
-
-  if (workers < maxWorkers && Fries::Salting::portions >= front.fries && AssemblyStation::burgers >= front.burgers)
+  if (ordersQueue.size() > 0)
   {
-    ordersQueue.pop();
-    workers++;
-    AssemblyStation::burgers -= front.burgers;
-    Fries::Salting::portions -= front.fries;
-    totalBurgers -= front.burgers;
-    totalFries -= front.fries;
-    canDo = true;
+
+    front = ordersQueue.front();
+
+    if (workers < maxWorkers && Fries::Salting::fries >= front.fries && AssemblyStation::burgers >= front.burgers)
+    {
+      ordersQueue.pop();
+      ++workers;
+      AssemblyStation::burgers -= front.burgers;
+      Fries::Salting::fries -= front.fries;
+      totalBurgers -= front.burgers;
+      totalFries -= front.fries;
+      statusDisplayer->updateDeliveryWorkers(workers);
+      statusDisplayer->updateAssemblyStationBurgers(AssemblyStation::burgers);
+      statusDisplayer->updateSaltingFries(Fries::Salting::fries);
+      statusDisplayer->updateDeliveryOrdered(totalFries, totalBurgers);
+      statusDisplayer->updateDeliveryFirstOrder(ordersQueue);
+      canDo = true;
+    }
   }
   pthread_mutex_unlock(&mutex);
   pthread_mutex_unlock(&Fries::Salting::mutex);
@@ -94,11 +103,12 @@ bool Delivery::deliverOrder()
   sleep(assemblingTime);
 
   // Allows one customer to order more.
-  pthread_mutex_unlock(&customerWaitLock);
+  pthread_cond_signal(&waitForOrderDelivered);
 
   pthread_mutex_lock(&mutex);
   if (--workers == maxWorkers - 1)
     Worker::broadcastAvailableTasks();
+  statusDisplayer->updateDeliveryWorkers(workers);
   pthread_mutex_unlock(&mutex);
 
   return true;
@@ -110,6 +120,9 @@ void Delivery::placeOrder(order_t order)
   ordersQueue.push(order);
   totalBurgers += order.burgers;
   totalFries += order.fries;
+  if (ordersQueue.size() == 1)
+    statusDisplayer->updateDeliveryFirstOrder(ordersQueue);
+  statusDisplayer->updateDeliveryOrdered(totalFries, totalBurgers);
   pthread_mutex_unlock(&mutex);
 
   Worker::broadcastAvailableTasks();
@@ -118,17 +131,16 @@ void Delivery::placeOrder(order_t order)
 void *Delivery::Customer(void *args)
 {
   order_t order;
-  std::stringstream out;
+  std::ostringstream out;
   int id = *(int *)args;
   delete (int *)args;
 
   out << "Customer of id " << id << " instantiated" << std::endl;
-  std::cout << out.str();
+  logString << out.str();
   out.str("");
 
-  while (true)
+  while (runThreads)
   {
-
     /* Think of an order */
     order.burgers = 0;
     order.fries = 0;
@@ -139,14 +151,17 @@ void *Delivery::Customer(void *args)
     }
 
     placeOrder(order);
-    std::stringstream out;
     out << "Customer[" << id << "]: Pedi " << order.fries << " fritas e " << order.burgers << " hambúrgueres." << std::endl;
-    std::cout << out.str();
+    logString << out.str();
     out.str("");
 
     // The customer waits for a delivery to be made before ordering more.
-    pthread_mutex_lock(&customerWaitLock);
+    pthread_mutex_lock(&orderMakingMutex);
+    pthread_cond_wait(&waitForOrderDelivered, &orderMakingMutex);
+    pthread_mutex_unlock(&orderMakingMutex);
   }
+
+  return nullptr;
 }
 
 std::vector<Delivery::priority_type_t> Delivery::getPriority()
@@ -163,7 +178,7 @@ std::vector<Delivery::priority_type_t> Delivery::getPriority()
   if (totalBurgers != 0 || totalFries != 0)
   {
     burgers = AssemblyStation::burgers;
-    fries = Fries::Salting::portions;
+    fries = Fries::Salting::fries;
     front = ordersQueue.front();
     neededBurgersForOrder = std::max(0, front.burgers - burgers);
     neededFriesForOrder = std::max(0, front.fries - fries);
