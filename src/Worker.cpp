@@ -8,9 +8,11 @@
 #include <pthread.h>
 #include <sstream>
 #include <iostream>
+#include <fstream>
 
 extern bool runThreads;
-extern std::ostringstream logString;
+extern bool loggingEnabled;
+extern std::ofstream logFile;
 
 namespace Worker
 {
@@ -50,7 +52,8 @@ void *Worker::Worker(void *args)
   delete (int *)args;
 
   out << "Worker of id " << id << " instantiated" << std::endl;
-  logString << out.str();
+  if (loggingEnabled)
+    logFile << out.str();
   out.str("");
 
   while (runThreads)
@@ -98,7 +101,8 @@ void *Worker::Worker(void *args)
 
         if (doneSomething)
         {
-          logString << out.str();
+          if (loggingEnabled)
+            logFile << out.str();
           out.str("");
           break;
         }
@@ -107,7 +111,8 @@ void *Worker::Worker(void *args)
       if (!doneSomething)
       {
         out << "Worker[" << id << "]: Sem tarefas para fazer, vou esperar por uma." << std::endl;
-        logString << out.str();
+        if (loggingEnabled)
+          logFile << out.str();
         out.str("");
         pthread_cond_wait(&waitForTask, &mutex);
       }

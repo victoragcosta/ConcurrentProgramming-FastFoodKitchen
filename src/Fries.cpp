@@ -4,16 +4,19 @@
 
 #include <unistd.h>
 #include <sstream>
+#include <fstream>
 #include <iostream>
 
 extern bool runThreads;
-extern std::ostringstream logString;
+extern bool loggingEnabled;
+extern std::ofstream logFile;
 namespace Fries
 {
   namespace DeepFriers
   {
     /* Constants */
     const int setupTime = 2, fryTime = 5, friesPerBatch = 120;
+    int maxFriers;
 
     /* Deep friers cycle control */
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -43,6 +46,7 @@ std::vector<pthread_t> Fries::initFries(int nDeepFriers, int nSalters)
 {
   /* Setup constants */
   Salting::maxWorkers = nSalters;
+  DeepFriers::maxFriers = nDeepFriers;
 
   /* Start Threads */
   pthread_t thread;
@@ -67,7 +71,8 @@ void *Fries::DeepFriers::DeepFrier(void *args)
 
   std::ostringstream out;
   out << "Deep frier of id " << id << " instantiated" << std::endl;
-  logString << out.str();
+  if (loggingEnabled)
+    logFile << out.str();
   out.str("");
 
   while (runThreads)
@@ -80,7 +85,8 @@ void *Fries::DeepFriers::DeepFrier(void *args)
     statusDisplayer->updateDeepFrierAvailable(available);
 
     out << "DeepFrier[" << id << "]: Estou pronto." << std::endl;
-    logString << out.str();
+    if (loggingEnabled)
+      logFile << out.str();
     out.str("");
 
     /* Wait for a request */
@@ -99,7 +105,8 @@ void *Fries::DeepFriers::DeepFrier(void *args)
     pthread_mutex_lock(&mutex);
     unsaltedFries += friesPerBatch;
     out << "DeepFrier[" << id << "]: Fritei. Agora temos " << unsaltedFries << " batatas." << std::endl;
-    logString << out.str();
+    if (loggingEnabled)
+      logFile << out.str();
     out.str("");
     if (unsaltedFries >= Salting::friesPerPortion)
       Worker::broadcastAvailableTasks();
@@ -115,7 +122,7 @@ bool Fries::DeepFriers::setupDeepFrier()
   bool canDo = false;
   pthread_mutex_lock(&mutex);
   pthread_mutex_lock(&mutexUnsaltedFries);
-  if (available > 0 && unsaltedFries + friesPerBatch <= 240)
+  if (available > 0 && unsaltedFries + (1 + maxFriers - available) * friesPerBatch <= 240)
   {
     canDo = true;
     available--;

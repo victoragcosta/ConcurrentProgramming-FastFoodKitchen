@@ -27,11 +27,11 @@ private:
 
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-  void displayStatus();
-
 public:
   StatusDisplayer(int nWorkers, int nCustomers, int nDelivery, int nDeepFriers, int nSalters, int nAssemblyStations, int nGriddles);
   // ~StatusDisplayer();
+
+  void displayStatus();
 
   void updateAssemblyStationBurgers(int n);
   void updateAssemblyStationWorkers(int n);

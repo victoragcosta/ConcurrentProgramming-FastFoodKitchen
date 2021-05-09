@@ -28,7 +28,7 @@ bool Griddle::makeBurgerMeats()
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
-  if (workers < maxWorkers && burgersMeat + burgersPerBatch <= 40)
+  if (workers < maxWorkers && burgersMeat + (workers + 1) * burgersPerBatch <= 40)
   {
     workers++;
     canDo = true;

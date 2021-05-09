@@ -8,13 +8,15 @@
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 #include <queue>
 #include <random>
 #include <unistd.h>
 #include <pthread.h>
 
 extern bool runThreads;
-extern std::ostringstream logString;
+extern bool loggingEnabled;
+extern std::ofstream logFile;
 namespace Delivery
 {
   /* Constants */
@@ -136,7 +138,8 @@ void *Delivery::Customer(void *args)
   delete (int *)args;
 
   out << "Customer of id " << id << " instantiated" << std::endl;
-  logString << out.str();
+  if (loggingEnabled)
+    logFile << out.str();
   out.str("");
 
   while (runThreads)
@@ -152,7 +155,8 @@ void *Delivery::Customer(void *args)
 
     placeOrder(order);
     out << "Customer[" << id << "]: Pedi " << order.fries << " fritas e " << order.burgers << " hambúrgueres." << std::endl;
-    logString << out.str();
+    if (loggingEnabled)
+      logFile << out.str();
     out.str("");
 
     // The customer waits for a delivery to be made before ordering more.
