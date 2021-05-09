@@ -35,23 +35,71 @@
 
 \section{Introdução}
 
-Introduza aqui\cite{Teste} e aqui \ref{codigo} 
-\begin{lstlisting}[caption=Código\label{codigo}]
-#include <iostream>
+Este artigo tem por objetivo simular a concorrência correta de uma cozinha de um restaurante de \textit{fast-food}. Em um restaurante de \textit{fast-food} típico as tarefas que existem giram em torno de anotar e entregar pedidos, preparar comida, limpar o ambiente e reestocar ingredientes. Para o propósito educacional desse problema o foco será na entrega de pedidos e preparação de hambúrgueres e porções de batatas fritas. Para a recepção de pedidos assume-se que os clientes conseguem pedir sozinhos. As outras tarefas são consideradas magicamente feitas.
 
-int main(){
-	std::cout << "Hello World" << std::endl;
-}
-\end{lstlisting}
-
+Para a resolução desse problema será utilizada a biblioteca \textit{pthread} e a linguagem de programação C++ versão de 2011 (\texttt{-std=c++11}). Essa biblioteca fornece funções para gerenciamento de \textit{threads} e a sincronização delas. Para resolver este problema optou-se por usar \textit{locks} e variáveis de condição.
 
 \section{Formalização do problema}
 
-Formalize aqui
+O objetivo é simular um restaurante. Este restaurante é de \textit{fast-food} e nele se vende hambúrgueres e porções de batata frita apenas. Os clientes fazem pedidos através de um totem que disponibiliza os pedidos para os funcionários do restaurante automaticamente. Após receber um pedido, funcionários deverão operar as máquinas e estações para atender ao pedido do primeiro cliente da fila. As máquinas e estações que existem são:
+
+\begin{itemize}
+	\item Fritadeira: frita batatas sozinha. Para funcionar precisa de um preparo feito por algum funcionário. Ela automaticamente frita e disponibiliza uma quantidade de batatas fritas sem sal.
+
+	\item Estação de salgagem de fritas: após fritar, as batatas precisam de sal e de serem colocadas em caixas. Esta estação necessita de toda a atenção do funcionário Uma fritada das fritadeiras permite que se façam mais de uma porção de batatas fritas.
+
+	\item Chapa: o funcionário frita as carnes dos hambúrgueres aqui. Este equipamento exige toda a atenção do chapeiro, porém no fim frita várias carnes de uma vez.
+
+	\item Estação de montagem de hambúrgueres: após fritar as carnes, precisa-se montar o hambúrguer com todos os outros ingredientes. Nesta estação o funcionário mantém toda sua concentração e no fim do processo gera apenas um hambúrguer pronto.
+
+	\item Balcão de entrega: aqui o funcionário gasta um tempo montando o pedido do primeiro na fila e entrega a ele. Exige toda a atenção do funcionário.
+\end{itemize}
+
+
+Os valores dos parâmetros de tempo, quantidade de comida gerada por tarefa e quantidade de funcionários por estação não são relevantes para a resolução do problema, então foram todos deixados como constantes configuráveis no programa. Todas as estações têm limite de funcionários operando que deve ser observado na resolução do problema. Todos os funcionários só conseguem realizar uma tarefa por vez.
 
 \section{Descrição do algoritmo da solução do problema}
 
-Descreva aqui
+\subsection{Principais desafios}
+
+Este problema está cheio de condições de corrida, mas elas essencialmente consistem de 2 tipos: limitar quantidade de trabalhadores e garantir a validade das quantidades de comida produzidas. O primeiro tipo aparece quando existem múltiplos funcionários tentando acessar a mesma máquina e é resolvido com uma variável de controle que exige acesso exclusivo. O segundo tipo ocorre no momento em que uma estação produz um recurso que outra quer utilizar e para resolver a variável que cuida da quantidade do recurso só pode ser acessada exclusivamente.
+
+Existem também problemas de possíveis \textit{deadlocks} no momento da aquisição de múltiplos recursos. Para resolver isso, todas as funções foram conferidas na ordem que eram chamadas para remover ciclos de requisitos e em momentos de requisição de múltiplos \textit{locks}, eles sempre foram adquiridos em uma ordem única para o programa.
+
+Além desses desafios, deve-se deixar as \textit{threads} dormindo em momentos que não têm tarefas para realizar. Ao retirar esperas ocupadas evita-se \textit{starvation} de linhas de execução e otimiza-se o uso do processador. Para isso fez-se uso extensivo de variáveis de condição.
+
+\subsection{Resolvendo condições de corrida}
+
+\subsubsection{Retirada segura de recursos}
+
+A primeira condição de corrida se refere a retirada de um recurso para uso em outra tarefa. Nela asseguramos que o valor do recurso é consistente, evitando itens fantasma e sumiço de itens. Para não ter que compartilhar o \textit{lock} com outros módulos, optou-se for fazer uma função que testa e retira. O algoritmo \ref{lst:safeResourceRemoval} implementa a solução desse problema.
+
+\begin{lstlisting}[caption=Retirada de recurso segura\label{lst:safeResourceRemoval}]
+bool AssemblyStation::getBurgers(int n)
+{
+	bool canDo = false;
+	pthread_mutex_lock(&mutex);
+	if (burgers >= n)
+	{
+		burgers -= n;
+		statusDisplayer->updateAssemblyStationBurgers(burgers);
+		canDo = true;
+	}
+	pthread_mutex_unlock(&mutex);
+	
+	if (!canDo)
+		return false;
+	
+	return true;
+}
+\end{lstlisting}
+
+Nas linhas 5 a 10 do algoritmo \ref{lst:safeResourceRemoval} está localizada a região crítica, onde se testa a possibilidade de remoção da quantidade recebida. O acesso exclusivo é garantido pelas linhas 4 e 11, por conta dos \textit{locks} que garantem que só uma linha de execução conseguem obter a trava. No caso de possível a retirada, ela ocorre dentro dessa mesma região. De forma a aumentar a concorrência, faz-se uso de uma variável local booleana chamada \texttt{canDo} que guarda se foi possível ou não retirar. Fora da região crítica, das linhas 13 a 16 é informado à quem chamou a função se foi possível ou não extrair o valor.
+
+A linha 8 do algoritmo \ref{lst:safeResourceRemoval} é uma chamada a um método de uma classe responsável por mostrar o estado do restaurante de forma organizada após cada alteração. Este módulo é completamente destacável do programa e não é relevante para a resolução do problema.
+
+\subsubsection{Limitação de funcionários}
+\subsubsection{Adição segura de recursos}
 
 \section{Conclusão}
 
