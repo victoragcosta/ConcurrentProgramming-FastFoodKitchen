@@ -100,7 +100,7 @@ A linha 8 do algoritmo \ref{lst:safeResourceRemoval} é uma chamada a um método
 
 \subsubsection{Limitação de funcionários}
 
-
+Para limitar os funcionários, faz-se um algoritmo muito parecido. A maior mudança é a condição de uso e os efeitos colaterais. A condição na linha 5 do algoritmo \ref{lst:limitWorkersNSafeAdd}	limita a quantidade de trabalhadores pela variável de controle \texttt{workers} e usa a função \texttt{Griddle::getBurgerMeats}, que funciona de forma similar ao algoritimo \ref{lst:safeResourceRemoval}, para testar se pode
 
 \begin{lstlisting}[caption=Limitação de funcionários e adição segura de recursos\label{lst:limitWorkersNSafeAdd}]
 bool AssemblyStation::makeBurgers()
