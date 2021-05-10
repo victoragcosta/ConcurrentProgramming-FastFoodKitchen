@@ -74,7 +74,7 @@ Além desses desafios, deve-se deixar as \textit{threads} dormindo em momentos q
 
 A primeira condição de corrida se refere a retirada de um recurso para uso em outra tarefa. Nela asseguramos que o valor do recurso é consistente, evitando itens fantasma e sumiço de itens. Para não ter que compartilhar o \textit{lock} com outros módulos, optou-se for fazer uma função que testa e retira. O algoritmo \ref{lst:safeResourceRemoval} implementa a solução desse problema.
 
-\begin{lstlisting}[caption=Retirada de recurso segura\label{lst:safeResourceRemoval}]
+\begin{lstlisting}[caption=Retirada segura de recurso\label{lst:safeResourceRemoval}]
 bool AssemblyStation::getBurgers(int n)
 {
 	bool canDo = false;
@@ -99,6 +99,36 @@ Nas linhas 5 a 10 do algoritmo \ref{lst:safeResourceRemoval} está localizada a 
 A linha 8 do algoritmo \ref{lst:safeResourceRemoval} é uma chamada a um método de uma classe responsável por mostrar o estado do restaurante de forma organizada após cada alteração. Este módulo é completamente destacável do programa e não é relevante para a resolução do problema.
 
 \subsubsection{Limitação de funcionários}
+
+
+
+\begin{lstlisting}[caption=Limitação de funcionários e adição segura de recursos\label{lst:limitWorkersNSafeAdd}]
+bool AssemblyStation::makeBurgers()
+{
+	bool canDo = false;
+	pthread_mutex_lock(&mutex);
+	if (workers < maxWorkers && Griddle::getBurgerMeats(burgersPerBatch))
+	{
+		statusDisplayer->updateAssemblyStationWorkers(++workers);
+		canDo = true;
+	}
+	pthread_mutex_unlock(&mutex);
+	
+	if (!canDo)
+	return false;
+	
+	sleep(assemblingTime);
+	pthread_mutex_lock(&mutex);
+	statusDisplayer->updateAssemblyStationWorkers(--workers);
+	burgers += burgersPerBatch;
+	statusDisplayer->updateAssemblyStationBurgers(burgers);
+	pthread_mutex_unlock(&mutex);
+	
+	Worker::broadcastAvailableTasks();
+	return true;
+}
+\end{lstlisting}
+
 \subsubsection{Adição segura de recursos}
 
 \section{Conclusão}
