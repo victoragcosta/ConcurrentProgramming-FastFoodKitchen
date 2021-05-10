@@ -34,12 +34,14 @@
 \maketitle
 
 \section{Introdução}
+\label{sec:introduction}
 
 Este artigo tem por objetivo simular a concorrência correta de uma cozinha de um restaurante de \textit{fast-food}. Em um restaurante de \textit{fast-food} típico as tarefas que existem giram em torno de anotar e entregar pedidos, preparar comida, limpar o ambiente e reestocar ingredientes. Para o propósito educacional desse problema o foco será na entrega de pedidos e preparação de hambúrgueres e porções de batatas fritas. Para a recepção de pedidos assume-se que os clientes conseguem pedir sozinhos. As outras tarefas são consideradas magicamente feitas.
 
 Para a resolução desse problema será utilizada a biblioteca \textit{pthread} e a linguagem de programação C++ versão de 2011 (\texttt{-std=c++11}). Essa biblioteca fornece funções para gerenciamento de \textit{threads} e a sincronização delas. Para resolver este problema optou-se por usar \textit{locks} e variáveis de condição.
 
 \section{Formalização do problema}
+\label{sec:definingTheProblem}
 
 O objetivo é simular um restaurante. Este restaurante é de \textit{fast-food} e nele se vende hambúrgueres e porções de batata frita apenas. Os clientes fazem pedidos através de um totem que disponibiliza os pedidos para os funcionários do restaurante automaticamente. Após receber um pedido, funcionários deverão operar as máquinas e estações para atender ao pedido do primeiro cliente da fila. As máquinas e estações que existem são:
 
@@ -59,8 +61,10 @@ O objetivo é simular um restaurante. Este restaurante é de \textit{fast-food} 
 Os valores dos parâmetros de tempo, quantidade de comida gerada por tarefa e quantidade de funcionários por estação não são relevantes para a resolução do problema, então foram todos deixados como constantes configuráveis no programa. Todas as estações têm limite de funcionários operando que deve ser observado na resolução do problema. Todos os funcionários só conseguem realizar uma tarefa por vez.
 
 \section{Descrição do algoritmo da solução do problema}
+\label{sec:algorithmDescription}
 
 \subsection{Principais desafios}
+\label{sec:biggestChallenges}
 
 Este problema está cheio de condições de corrida, mas elas essencialmente consistem de 2 tipos: limitar quantidade de trabalhadores e garantir a validade das quantidades de comida produzidas. O primeiro tipo aparece quando existem múltiplos funcionários tentando acessar a mesma máquina e é resolvido com uma variável de controle que exige acesso exclusivo. O segundo tipo ocorre no momento em que uma estação produz um recurso que outra quer utilizar e para resolver a variável que cuida da quantidade do recurso só pode ser acessada exclusivamente.
 
@@ -71,10 +75,11 @@ Além desses desafios, deve-se deixar as \textit{threads} dormindo em momentos q
 \subsection{Resolvendo condições de corrida}
 
 \subsubsection{Retirada segura de recursos}
+\label{sec:safeResourceRemoval}
 
 A primeira condição de corrida se refere a retirada de um recurso para uso em outra tarefa. Nela asseguramos que o valor do recurso é consistente, evitando itens fantasma e sumiço de itens. Para não ter que compartilhar o \textit{lock} com outros módulos, optou-se for fazer uma função que testa e retira. O algoritmo \ref{lst:safeResourceRemoval} implementa a solução desse problema.
 
-\begin{lstlisting}[caption=Retirada segura de recurso\label{lst:safeResourceRemoval}]
+\begin{lstlisting}[caption=Retirada segura de recursos da estação de montagem de hambúrgueres.\label{lst:safeResourceRemoval}]
 bool AssemblyStation::getBurgers(int n)
 {
 	bool canDo = false;
@@ -98,11 +103,18 @@ Nas linhas 5 a 10 do algoritmo \ref{lst:safeResourceRemoval} está localizada a 
 
 A linha 8 do algoritmo \ref{lst:safeResourceRemoval} é uma chamada a um método de uma classe responsável por mostrar o estado do restaurante de forma organizada após cada alteração. Este módulo é completamente destacável do programa e não é relevante para a resolução do problema.
 
-\subsubsection{Limitação de funcionários}
+\subsubsection{Limitação de funcionários e adição segura de recursos}
+\label{sec:limitWorkersAndSafeAdd}
 
-Para limitar os funcionários, faz-se um algoritmo muito parecido. A maior mudança é a condição de uso e os efeitos colaterais. A condição na linha 5 do algoritmo \ref{lst:limitWorkersNSafeAdd}	limita a quantidade de trabalhadores pela variável de controle \texttt{workers} e usa a função \texttt{Griddle::getBurgerMeats}, que funciona de forma similar ao algoritimo \ref{lst:safeResourceRemoval}, para testar se pode
+Para limitar os funcionários, faz-se um algoritmo muito parecido. A maior mudança é a condição de uso e os efeitos colaterais. A condição na linha 5 do algoritmo \ref{lst:limitWorkersAndSafeAdd}	limita a quantidade de trabalhadores pela variável de controle \texttt{workers} e usa a função \texttt{Griddle::getBurgerMeats}, que funciona de forma similar ao algoritmo \ref{lst:safeResourceRemoval}, para testar se tem recursos para realizar a tarefa. No caso em que ambas as condições sejam verdadeiras, ajusta-se o valor de \texttt{workers} para garantir que não sejam excedidos o número de trabalhadores nessa estação e também ajusta-se a quantidade de recursos retirada. O ajuste da quantidade retirada ocorre dentro da função \texttt{Griddle::getBurgerMeats} para não ter a necessidade de lidar com \textit{locks} de outro módulo.
 
-\begin{lstlisting}[caption=Limitação de funcionários e adição segura de recursos\label{lst:limitWorkersNSafeAdd}]
+Existem estações de trabalho que não precisam verificar a existência de recursos, como a fritadeira e a grelha, e nesse caso apenas retira-se da condição a função que pede por recursos.
+
+No momento que o funcionário terminar sua tarefa (após o \texttt{sleep} da linha 15), adquire-se o \textit{lock} referente aos trabalhadores e recursos gerados da própria estação (linha 16). Tendo esta trava, o algoritmo atualiza a variável de controle \texttt{workers} para indicar que o funcionário deixou a estação de trabalho. Ao mesmo tempo é incrementada a variável dos recursos produzidos pela estação (linha 18), adicionando os recursos de forma segura.
+
+Ao fim de toda tarefa os trabalhadores são acordados, pois uma estação ficou livre para funcionários realizarem tarefas nela. Isso será mais aprofundado na seção \ref{sec:avoidBusyWaits}.
+
+\begin{lstlisting}[caption=Limitação de funcionários e adição segura de recursos na estação de montagem de hambúrgueres.\label{lst:limitWorkersAndSafeAdd}]
 bool AssemblyStation::makeBurgers()
 {
 	bool canDo = false;
@@ -115,7 +127,7 @@ bool AssemblyStation::makeBurgers()
 	pthread_mutex_unlock(&mutex);
 	
 	if (!canDo)
-	return false;
+		return false;
 	
 	sleep(assemblingTime);
 	pthread_mutex_lock(&mutex);
@@ -129,7 +141,115 @@ bool AssemblyStation::makeBurgers()
 }
 \end{lstlisting}
 
-\subsubsection{Adição segura de recursos}
+\subsubsection{Caso especial: fritadeira}
+\label{sec:specialCaseDeepFriers}
+
+As fritadeiras fogem um pouco desse padrão por funcionarem de forma independente. O algoritmo \ref{lst:deepFriersSetup} tem uma função parecida com a do algoritmo \ref{lst:limitWorkersAndSafeAdd}, a maior diferença é a forma de controlar a quantidade de trabalhadores e que ela só solicita o funcionamento das fritadeiras ao invés de incrementar na quantidade de recursos gerados. Nessa estação de trabalho optou-se por usar uma trava para o controle das batatas sem sal e uma trava para o controle das \texttt{threads} de forma a promover uma maior concorrência.
+
+Na linha 6, ao invés de saber quantos trabalhadores têm e o máximo deles, o módulo da fritadeira opta por saber quantas fritadeiras estão disponíveis. Essa mudança de arquitetura facilita o controle das \textit{threads} que representam as fritadeiras e realizam seu funcionamento automático. A outra parte da condição serve para limitar a quantidade de fritas sem sal produzidas e o motivo desse limite se encontra na seção \ref{sec:avoidBusyWaits}. Após confirmar a possibilidade de usar a fritadeira, marca-se na variável \texttt{available} que uma a menos se encontra disponível. 
+
+Na linha 20, após o tempo de preparo na linha 18 passar, modifica-se uma variável de controle \texttt{requested} para demonstrar que uma fritadeira pode iniciar o trabalho. Logo depois na linha 22 é dado um sinal na variável de condição das fritadeiras para que uma comece a fritar.
+
+\begin{lstlisting}[caption=Preparação das fritadeiras.\label{lst:deepFriersSetup}]
+bool DeepFriers::setupDeepFrier()
+{
+	bool canDo = false;
+	pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&mutexUnsaltedFries);
+	if (available > 0 && unsaltedFries + (1 + maxFriers - available) * friesPerBatch <= 240)
+	{
+		canDo = true;
+		available--;
+		statusDisplayer->updateDeepFrierAvailable(available);
+	}
+	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&mutexUnsaltedFries);
+	
+	if (!canDo)
+		return false;
+	
+	sleep(setupTime);
+	pthread_mutex_lock(&mutex);
+	requested++;
+	pthread_mutex_unlock(&mutex);
+	pthread_cond_signal(&condition);
+	
+	return true;
+}
+\end{lstlisting}
+
+O algoritmo \ref{lst:deepFriersSetup} simula o funcionamento independente das fritadeiras. No início, elas demonstram que estão prontas para uso incrementando \texttt{available} (linha 16). Logo após, na linha 27, elas verificam se houve algum pedido de funcionamento (fim do preparo visto no algoritmo \ref{lst:deepFriersSetup}). Caso não tenham, na linha 28, elas esperam até receberem o sinal de que foi requisitado. Para a eventualidade que uma \textit{thread} acorde e outra já tenha respondido ao pedido, essa uma confere se ainda existem pedidos. Assim que elas começam a fritar, na linha 29, elas marcam que atenderam o pedido.
+
+Depois de atender ao pedido de funcionamento, a fritadeira gasta um tempo na linha 36 fritando as batatas. Quando ela terminar de fritar, ela realiza uma adição segura, de forma similar às linhas 16 a 20  no algoritmo \ref{lst:limitWorkersAndSafeAdd}.
+
+\begin{lstlisting}[caption=\textit{Threads} das fritadeiras.\label{lst:deepFriersThread}]
+void *DeepFriers::DeepFrier(void *args)
+{
+	int id = *(int *)args;
+	delete (int *)args; // Prevent memory leaks
+	
+	std::ostringstream out;
+	out << "Deep frier of id " << id << " instantiated" << std::endl;
+	if (loggingEnabled)
+		logFile << out.str();
+	out.str("");
+	
+	while (runThreads)
+	{
+		pthread_mutex_lock(&mutex);
+		/* Show that the deep frier is free */
+		if (++available == 1)
+		Worker::broadcastAvailableTasks();
+		
+		statusDisplayer->updateDeepFrierAvailable(available);
+		
+		out << "DeepFrier[" << id << "]: Estou pronto." << std::endl;
+		if (loggingEnabled)
+			logFile << out.str();
+		out.str("");
+		
+		/* Wait for a request */
+		while (requested <= 0 && runThreads)
+			pthread_cond_wait(&condition, &mutex);
+		requested--;
+		pthread_mutex_unlock(&mutex);
+		
+		if (!runThreads)
+			break;
+		
+		/* Fry */
+		sleep(fryTime);
+		
+		/* Add unsalted fries */
+		pthread_mutex_lock(&mutex);
+		unsaltedFries += friesPerBatch;
+		out << "DeepFrier[" << id << "]: Fritei. Agora temos " << unsaltedFries << " batatas." << std::endl;
+		if (loggingEnabled)
+			logFile << out.str();
+		out.str("");
+		if (unsaltedFries >= SaltingStation::friesPerPortion)
+			Worker::broadcastAvailableTasks();
+		
+		statusDisplayer->updateDeepFrierUnsaltedFries(unsaltedFries);
+		pthread_mutex_unlock(&mutex);
+	}
+	return nullptr;
+}
+\end{lstlisting}
+
+Todas as chamadas ao \texttt{statusDisplayer} servem para atualizar uma classe responsável por mostrar o estado do programa de uma forma mais geral e não é relevante para a solução do problema. Nas \textit{threads} desse programa existem também escritas a um arquivo de \textit{log} referenciado pela variável \texttt{logFile} que são opcionais e servem apenas para ajudar na resolução de problemas ou para ver o programa de outra forma. Também pode-se notar chamadas a uma função de acordar trabalhadores; ela notifica os funcionários de que existe uma tarefa disponível. Essa funcionalidade é melhor discutida na seção \ref{sec:avoidBusyWaits}.
+
+\subsection{Evitando \textit{deadlocks}}
+\label{sec:avoidDeadlocks}
+
+\subsection{Evitando esperas ocupadas}
+\label{sec:avoidBusyWaits}
+
+\subsection{Evitando \textit{starvation}}
+\label{sec:avoidStarvation}
+
+\subsection{Exibindo o estado da simulação}
+\label{sec:showProgramState}
 
 \section{Conclusão}
 
