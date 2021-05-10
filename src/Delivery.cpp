@@ -1,7 +1,8 @@
 #include "Delivery.hpp"
 #include "Griddle.hpp"
 #include "AssemblyStation.hpp"
-#include "Fries.hpp"
+#include "SaltingStation.hpp"
+#include "DeepFrier.hpp"
 #include "Worker.hpp"
 #include "StatusDisplayer.hpp"
 
@@ -41,11 +42,11 @@ std::vector<pthread_t> Delivery::initDelivery(int nDelivery, int nCustomers)
   avgTimePerBurger = (double)Griddle::griddlingTime / (double)Griddle::burgersPerBatch;
   avgTimePerBurger += (double)AssemblyStation::assemblingTime / (double)AssemblyStation::burgersPerBatch;
 
-  avgTimePerFries = (double)Fries::DeepFriers::setupTime;
-  avgTimePerFries += (double)Fries::DeepFriers::fryTime;
-  avgTimePerFries /= (double)Fries::DeepFriers::friesPerBatch;
-  avgTimePerFries *= (double)Fries::Salting::friesPerPortion;
-  avgTimePerFries += (double)Fries::Salting::saltingTime;
+  avgTimePerFries = (double)DeepFriers::setupTime;
+  avgTimePerFries += (double)DeepFriers::fryTime;
+  avgTimePerFries /= (double)DeepFriers::friesPerBatch;
+  avgTimePerFries *= (double)SaltingStation::friesPerPortion;
+  avgTimePerFries += (double)SaltingStation::saltingTime;
 
   maxWorkers = nDelivery;
 
@@ -72,31 +73,31 @@ bool Delivery::deliverOrder()
   order_t front;
 
   pthread_mutex_lock(&mutex);
-  pthread_mutex_lock(&Fries::Salting::mutex);
+  pthread_mutex_lock(&SaltingStation::mutex);
   pthread_mutex_lock(&AssemblyStation::mutex);
   if (ordersQueue.size() > 0)
   {
 
     front = ordersQueue.front();
 
-    if (workers < maxWorkers && Fries::Salting::fries >= front.fries && AssemblyStation::burgers >= front.burgers)
+    if (workers < maxWorkers && SaltingStation::fries >= front.fries && AssemblyStation::burgers >= front.burgers)
     {
       ordersQueue.pop();
       ++workers;
       AssemblyStation::burgers -= front.burgers;
-      Fries::Salting::fries -= front.fries;
+      SaltingStation::fries -= front.fries;
       totalBurgers -= front.burgers;
       totalFries -= front.fries;
       statusDisplayer->updateDeliveryWorkers(workers);
       statusDisplayer->updateAssemblyStationBurgers(AssemblyStation::burgers);
-      statusDisplayer->updateSaltingFries(Fries::Salting::fries);
+      statusDisplayer->updateSaltingFries(SaltingStation::fries);
       statusDisplayer->updateDeliveryOrdered(totalFries, totalBurgers);
       statusDisplayer->updateDeliveryFirstOrder(ordersQueue);
       canDo = true;
     }
   }
   pthread_mutex_unlock(&mutex);
-  pthread_mutex_unlock(&Fries::Salting::mutex);
+  pthread_mutex_unlock(&SaltingStation::mutex);
   pthread_mutex_unlock(&AssemblyStation::mutex);
 
   if (!canDo)
@@ -175,14 +176,14 @@ std::vector<Delivery::priority_type_t> Delivery::getPriority()
   int fries, burgers, neededFriesForOrder, neededBurgersForOrder;
 
   pthread_mutex_lock(&mutex);
-  pthread_mutex_lock(&Fries::Salting::mutex);
+  pthread_mutex_lock(&SaltingStation::mutex);
   pthread_mutex_lock(&AssemblyStation::mutex);
 
   /* If there's nothing to be done, make workers wait */
   if (totalBurgers != 0 || totalFries != 0)
   {
     burgers = AssemblyStation::burgers;
-    fries = Fries::Salting::fries;
+    fries = SaltingStation::fries;
     front = ordersQueue.front();
     neededBurgersForOrder = std::max(0, front.burgers - burgers);
     neededFriesForOrder = std::max(0, front.fries - fries);
@@ -218,7 +219,7 @@ std::vector<Delivery::priority_type_t> Delivery::getPriority()
   }
 
   pthread_mutex_unlock(&mutex);
-  pthread_mutex_unlock(&Fries::Salting::mutex);
+  pthread_mutex_unlock(&SaltingStation::mutex);
   pthread_mutex_unlock(&AssemblyStation::mutex);
 
   return priorities;

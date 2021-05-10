@@ -2,7 +2,8 @@
 
 #include "AssemblyStation.hpp"
 #include "Griddle.hpp"
-#include "Fries.hpp"
+#include "SaltingStation.hpp"
+#include "DeepFrier.hpp"
 #include "Delivery.hpp"
 
 #include <queue>
@@ -26,12 +27,12 @@ StatusDisplayer::StatusDisplayer(int nWorkers, int nCustomers, int nDelivery, in
   griddlingTimeGriddle = Griddle::griddlingTime;
   burgersPerBatchGriddle = Griddle::burgersPerBatch;
 
-  setupTimeDeepFriers = Fries::DeepFriers::setupTime;
-  fryTimeDeepFriers = Fries::DeepFriers::fryTime;
-  friesPerBatchDeepFriers = Fries::DeepFriers::friesPerBatch;
+  setupTimeDeepFriers = DeepFriers::setupTime;
+  fryTimeDeepFriers = DeepFriers::fryTime;
+  friesPerBatchDeepFriers = DeepFriers::friesPerBatch;
 
-  saltingTimeSalting = Fries::Salting::saltingTime;
-  friesPerPortionSalting = Fries::Salting::friesPerPortion;
+  saltingTimeSalting = SaltingStation::saltingTime;
+  friesPerPortionSalting = SaltingStation::friesPerPortion;
 
   assemblingTimeDelivery = Delivery::assemblingTime;
 }

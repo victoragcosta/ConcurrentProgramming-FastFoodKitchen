@@ -1,4 +1,5 @@
-#include "Fries.hpp"
+#include "SaltingStation.hpp"
+#include "DeepFrier.hpp"
 #include "Worker.hpp"
 #include "StatusDisplayer.hpp"
 
@@ -10,43 +11,28 @@
 extern bool runThreads;
 extern bool loggingEnabled;
 extern std::ofstream logFile;
-namespace Fries
+
+namespace DeepFriers
 {
-  namespace DeepFriers
-  {
-    /* Constants */
-    const int setupTime = 2, fryTime = 5, friesPerBatch = 120;
-    int maxFriers;
+  /* Constants */
+  const int setupTime = 2, fryTime = 5, friesPerBatch = 120;
+  int maxFriers;
 
-    /* Deep friers cycle control */
-    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
-    int available = 0; //!< Helps workers know if there are free deep friers
-    int requested = 0; //!< Helps signal deep friers to work
+  /* Deep friers cycle control */
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+  int available = 0; //!< Helps workers know if there are free deep friers
+  int requested = 0; //!< Helps signal deep friers to work
 
-    /* Unsalted fries control */
-    pthread_mutex_t mutexUnsaltedFries = PTHREAD_MUTEX_INITIALIZER;
-    int unsaltedFries = 0;
-  }
-
-  namespace Salting
-  {
-    /* Constants */
-    const int saltingTime = 3, friesPerPortion = 40;
-    int maxWorkers;
-
-    /* Salting control */
-    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-    int fries = 0;
-    int workers = 0;
-  }
+  /* Unsalted fries control */
+  pthread_mutex_t mutexUnsaltedFries = PTHREAD_MUTEX_INITIALIZER;
+  int unsaltedFries = 0;
 }
 
-std::vector<pthread_t> Fries::initFries(int nDeepFriers, int nSalters)
+std::vector<pthread_t> DeepFriers::initDeepFriers(int nDeepFriers)
 {
   /* Setup constants */
-  Salting::maxWorkers = nSalters;
-  DeepFriers::maxFriers = nDeepFriers;
+  maxFriers = nDeepFriers;
 
   /* Start Threads */
   pthread_t thread;
@@ -57,14 +43,14 @@ std::vector<pthread_t> Fries::initFries(int nDeepFriers, int nSalters)
   {
     id = new int;
     *id = i;
-    pthread_create(&thread, NULL, DeepFriers::DeepFrier, (void *)id);
+    pthread_create(&thread, NULL, DeepFrier, (void *)id);
     threads.push_back(thread);
   }
 
   return threads;
 }
 
-void *Fries::DeepFriers::DeepFrier(void *args)
+void *DeepFriers::DeepFrier(void *args)
 {
   int id = *(int *)args;
   delete (int *)args; // Prevent memory leaks
@@ -108,7 +94,7 @@ void *Fries::DeepFriers::DeepFrier(void *args)
     if (loggingEnabled)
       logFile << out.str();
     out.str("");
-    if (unsaltedFries >= Salting::friesPerPortion)
+    if (unsaltedFries >= SaltingStation::friesPerPortion)
       Worker::broadcastAvailableTasks();
 
     statusDisplayer->updateDeepFrierUnsaltedFries(unsaltedFries);
@@ -117,7 +103,7 @@ void *Fries::DeepFriers::DeepFrier(void *args)
   return nullptr;
 }
 
-bool Fries::DeepFriers::setupDeepFrier()
+bool DeepFriers::setupDeepFrier()
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
@@ -143,7 +129,7 @@ bool Fries::DeepFriers::setupDeepFrier()
   return true;
 }
 
-bool Fries::DeepFriers::getUnsaltedFries(int n)
+bool DeepFriers::getUnsaltedFries(int n)
 {
   bool canDo = false;
   pthread_mutex_lock(&mutexUnsaltedFries);
@@ -154,51 +140,5 @@ bool Fries::DeepFriers::getUnsaltedFries(int n)
     statusDisplayer->updateDeepFrierUnsaltedFries(unsaltedFries);
   }
   pthread_mutex_unlock(&mutexUnsaltedFries);
-  return canDo;
-}
-
-bool Fries::Salting::saltFries()
-{
-  bool canDo = false;
-  pthread_mutex_lock(&mutex);
-  /*
-    Tries to make a portion.
-    If successful the unsalted fries are already subtracted in this function call.
-  */
-  if (workers < maxWorkers && DeepFriers::getUnsaltedFries(friesPerPortion))
-  {
-    workers++;
-    fries++;
-    canDo = true;
-    statusDisplayer->updateSaltingFries(fries);
-    statusDisplayer->updateSaltingWorkers(workers);
-  }
-  pthread_mutex_unlock(&mutex);
-
-  if (!canDo)
-    return false;
-
-  sleep(saltingTime);
-
-  pthread_mutex_lock(&mutex);
-  --workers;
-  statusDisplayer->updateSaltingWorkers(workers);
-  pthread_mutex_unlock(&mutex);
-
-  Worker::broadcastAvailableTasks();
-  return true;
-}
-
-bool Fries::Salting::getPortions(int n)
-{
-  bool canDo = false;
-  pthread_mutex_lock(&mutex);
-  if (fries >= n)
-  {
-    canDo = true;
-    fries -= n;
-    statusDisplayer->updateSaltingFries(fries);
-  }
-  pthread_mutex_unlock(&mutex);
   return canDo;
 }

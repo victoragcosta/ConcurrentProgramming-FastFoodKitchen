@@ -2,7 +2,8 @@
 #include "Delivery.hpp"
 #include "AssemblyStation.hpp"
 #include "Griddle.hpp"
-#include "Fries.hpp"
+#include "SaltingStation.hpp"
+#include "DeepFrier.hpp"
 
 #include <vector>
 #include <pthread.h>
@@ -87,13 +88,13 @@ void *Worker::Worker(void *args)
 
         case Delivery::FRIES:
           out << "Worker[" << id << "]: Tentando fazer uma porção de batatas." << std::endl;
-          if ((doneSomething = Fries::Salting::saltFries()))
+          if ((doneSomething = SaltingStation::saltFries()))
             out << "Worker[" << id << "]: Fiz uma porção de batatas." << std::endl;
 
           if (!doneSomething)
           {
             out << "Worker[" << id << "]: Tentando colocar batatas para fritar." << std::endl;
-            if ((doneSomething = Fries::DeepFriers::setupDeepFrier()))
+            if ((doneSomething = DeepFriers::setupDeepFrier()))
               out << "Worker[" << id << "]: Coloquei batatas para fritar." << std::endl;
           }
           break;

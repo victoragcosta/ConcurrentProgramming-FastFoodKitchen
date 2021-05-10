@@ -9,7 +9,8 @@
 #include <pthread.h> // Adds locks, conds and threads
 // #include <semaphore.h> // May be needed
 
-#include "Fries.hpp"
+#include "SaltingStation.hpp"
+#include "DeepFrier.hpp"
 #include "Griddle.hpp"
 #include "AssemblyStation.hpp"
 #include "Delivery.hpp"
@@ -52,8 +53,9 @@ int main(int argc, char *argv[])
 
   AssemblyStation::initAssemblyStations(nAssemblyStations);
   Griddle::initGriddle(nGriddles);
+  SaltingStation::initSaltingStations(nSalters);
 
-  aux = Fries::initFries(nDeepFriers, nSalters);
+  aux = DeepFriers::initDeepFriers(nDeepFriers);
   threads.insert(threads.end(), aux.begin(), aux.end());
 
   aux = Worker::initWorkers(nWorkers);
@@ -74,8 +76,15 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+int numCallsSigint = 0;
 void signalHandler(int signum)
 {
+  if (signum == SIGINT) {
+    numCallsSigint++;
+    if(numCallsSigint > 1)
+      exit(signum);
+  }
+
   if (loggingEnabled)
     logFile.close();
 
@@ -91,7 +100,7 @@ void signalHandler(int signum)
   cout << "Parando threads.\n";
   runThreads = false;
 
-  Fries::DeepFriers::setupDeepFrier();
+  DeepFriers::setupDeepFrier();
   pthread_cond_broadcast(&Delivery::waitForOrderDelivered);
   Worker::broadcastAvailableTasks();
 
