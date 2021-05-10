@@ -100,7 +100,7 @@ void signalHandler(int signum)
   cout << "Parando threads.\n";
   runThreads = false;
 
-  DeepFriers::setupDeepFrier();
+  pthread_cond_broadcast(&DeepFriers::condition);
   pthread_cond_broadcast(&Delivery::waitForOrderDelivered);
   Worker::broadcastAvailableTasks();
 

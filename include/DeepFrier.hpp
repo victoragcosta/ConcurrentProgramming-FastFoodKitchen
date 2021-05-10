@@ -9,6 +9,8 @@
     std::vector<pthread_t> initDeepFriers(int nDeepFriers);
     extern const int setupTime, fryTime, friesPerBatch;
 
+    extern pthread_cond_t condition;
+
     void *DeepFrier(void *args);
 
     bool setupDeepFrier();
