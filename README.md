@@ -21,3 +21,15 @@ while doing so.
 
 The customers can order any reasonable number of french fries and burgers and it
 automatically goes to the order queue (using some fancy apps).
+
+## Compiling and running
+
+Simply execute the comand `make` at the root of the project and it will build
+automatically. The binary will be created at `bin/fast-food-kitchen.out` and you
+may execute it. You may add `-l` or `--logging` to create a `log.txt` file in the
+current work directory. This log will contain messages from all threads indicating
+what they are doing.
+
+## Repository
+
+https://github.com/victoragcosta/ConcurrentProgramming-FastFoodKitchen
