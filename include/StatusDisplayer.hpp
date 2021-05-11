@@ -6,6 +6,8 @@
 #include <queue>
 #include <pthread.h>
 
+// Display the status of the whole simulation by having synchronous updates that
+// prints the state every time it updates.
 class StatusDisplayer
 {
 private:

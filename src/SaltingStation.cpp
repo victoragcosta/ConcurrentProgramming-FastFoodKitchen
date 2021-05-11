@@ -13,14 +13,17 @@ extern bool loggingEnabled;
 extern std::ofstream logFile;
 namespace SaltingStation
 {
-  /* Constants */
+  /* Constants and parameters */
+  // Time to make a fries serving
+  // Amount of unsalted fries it takes to make a serving
   const int saltingTime = 3, friesPerPortion = 40;
-  int maxWorkers;
+  int maxWorkers; // Number of worker spots
 
   /* Salting control */
+  // Exclusive access to the 2 variables below
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-  int fries = 0;
-  int workers = 0;
+  int fries = 0; // Number of fries servings
+  int workers = 0; // number of workers working in this station
 }
 
 
@@ -40,11 +43,9 @@ bool SaltingStation::saltFries()
   */
   if (workers < maxWorkers && DeepFriers::getUnsaltedFries(friesPerPortion))
   {
-    workers++;
-    fries++;
+    workers++; // Start working
     canDo = true;
-    statusDisplayer->updateSaltingFries(fries);
-    statusDisplayer->updateSaltingWorkers(workers);
+    statusDisplayer->updateSaltingWorkers(workers); // Update UI
   }
   pthread_mutex_unlock(&mutex);
 
@@ -54,10 +55,15 @@ bool SaltingStation::saltFries()
   sleep(saltingTime);
 
   pthread_mutex_lock(&mutex);
-  --workers;
+  --workers; // Stops working
+  fries++; // Creates a portion
+
+  // Update UI
   statusDisplayer->updateSaltingWorkers(workers);
+  statusDisplayer->updateSaltingFries(fries);
   pthread_mutex_unlock(&mutex);
 
+  // Show that a task may be available
   Worker::broadcastAvailableTasks();
   return true;
 }
@@ -66,11 +72,12 @@ bool SaltingStation::getPortions(int n)
 {
   bool canDo = false;
   pthread_mutex_lock(&mutex);
+  // Checks if there are enough fries
   if (fries >= n)
   {
     canDo = true;
-    fries -= n;
-    statusDisplayer->updateSaltingFries(fries);
+    fries -= n; // Gets them
+    statusDisplayer->updateSaltingFries(fries); // Update UI
   }
   pthread_mutex_unlock(&mutex);
   return canDo;

@@ -17,7 +17,9 @@ extern std::ofstream logFile;
 
 namespace Worker
 {
+  // so the condition can be used
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  // used to sleep when there are no tasks
   pthread_cond_t waitForTask = PTHREAD_COND_INITIALIZER;
 }
 
@@ -40,6 +42,7 @@ std::vector<pthread_t> Worker::initWorkers(int nWorkers)
 
 void Worker::broadcastAvailableTasks()
 {
+  // Wake all workers to try to do some task
   pthread_cond_broadcast(&waitForTask);
 }
 
@@ -57,68 +60,66 @@ void *Worker::Worker(void *args)
     logFile << out.str();
   out.str("");
 
+  // Do tasks while possible
   while (runThreads)
   {
     doneSomething = false;
-    while (!doneSomething)
+    priorities = Delivery::getPriority(); // check what tasks to do and in which order
+
+    // Attempt each priority until something is done
+    for (auto priority : priorities)
     {
-      priorities = Delivery::getPriority();
-      for (auto priority : priorities)
+      switch (priority)
       {
-        switch (priority)
+      case Delivery::DELIVERY:
+        if ((doneSomething = Delivery::deliverOrder()))
+          out << "Worker[" << id << "]: Entreguei pedido." << std::endl;
+        break;
+
+      case Delivery::BURGERS:
+        if ((doneSomething = AssemblyStation::makeBurgers()))
+          out << "Worker[" << id << "]: Finalizei um hambúrguer." << std::endl;
+
+        if (!doneSomething)
         {
-        case Delivery::DELIVERY:
-          out << "Worker[" << id << "]: Tentando entregar pedido." << std::endl;
-          if ((doneSomething = Delivery::deliverOrder()))
-            out << "Worker[" << id << "]: Entreguei pedido." << std::endl;
-          break;
-
-        case Delivery::BURGERS:
-          out << "Worker[" << id << "]: Tentando finalizar um hambúrguer." << std::endl;
-          if ((doneSomething = AssemblyStation::makeBurgers()))
-            out << "Worker[" << id << "]: Finalizei um hambúrguer." << std::endl;
-
-          if (!doneSomething)
-          {
-            out << "Worker[" << id << "]: Tentando fritar hambúrgueres." << std::endl;
-            if ((doneSomething = Griddle::makeBurgerMeats()))
-              out << "Worker[" << id << "]: Fritei hambúrgueres." << std::endl;
-          }
-          break;
-
-        case Delivery::FRIES:
-          out << "Worker[" << id << "]: Tentando fazer uma porção de batatas." << std::endl;
-          if ((doneSomething = SaltingStation::saltFries()))
-            out << "Worker[" << id << "]: Fiz uma porção de batatas." << std::endl;
-
-          if (!doneSomething)
-          {
-            out << "Worker[" << id << "]: Tentando colocar batatas para fritar." << std::endl;
-            if ((doneSomething = DeepFriers::setupDeepFrier()))
-              out << "Worker[" << id << "]: Coloquei batatas para fritar." << std::endl;
-          }
-          break;
+          if ((doneSomething = Griddle::makeBurgerMeats()))
+            out << "Worker[" << id << "]: Fritei hambúrgueres." << std::endl;
         }
+        break;
 
-        if (doneSomething)
+      case Delivery::FRIES:
+        if ((doneSomething = SaltingStation::saltFries()))
+          out << "Worker[" << id << "]: Fiz uma porção de batatas." << std::endl;
+
+        if (!doneSomething)
         {
-          if (loggingEnabled)
-            logFile << out.str();
-          out.str("");
-          break;
+          if ((doneSomething = DeepFriers::setupDeepFrier()))
+            out << "Worker[" << id << "]: Coloquei batatas para fritar." << std::endl;
         }
+        break;
       }
-      pthread_mutex_lock(&mutex);
-      if (!doneSomething)
+
+      if (doneSomething)
       {
-        out << "Worker[" << id << "]: Sem tarefas para fazer, vou esperar por uma." << std::endl;
         if (loggingEnabled)
           logFile << out.str();
         out.str("");
-        pthread_cond_wait(&waitForTask, &mutex);
+        break;
       }
-      pthread_mutex_unlock(&mutex);
     }
+    pthread_mutex_lock(&mutex);
+    // If there was nothing to do, sleep
+    if (!doneSomething)
+    {
+      out << "Worker[" << id << "]: Sem tarefas para fazer, vou esperar por uma." << std::endl;
+      if (loggingEnabled)
+        logFile << out.str();
+      out.str("");
+
+      // Wait for a task
+      pthread_cond_wait(&waitForTask, &mutex);
+    }
+    pthread_mutex_unlock(&mutex);
   }
   return nullptr;
 }
